@@ -172,40 +172,34 @@ mamba activate sparkify_redshift
   3. **DO NOT SHARE THIS FILE WITH ANYONE!** I recommend adding this file to .gitignore to avoid accidentally pushing it to a git repository: `printf "\n_user.cfg\n" >> .gitignore`.
 
 **Create cluster:**
-  1. Fill the `dwh.cfg` configuration file. These are the basic parameters that will be used to operate on AWS. More concretely, `GENERAL` covers general parameters, `DWH` includes the necessary information to create and connect to the Redshift cluster and S3 contains information on where to find the source dataset for this project.
+
+  1. Fill the `dwh.cfg` configuration file. These are the basic parameters that will be used to operate on AWS. More concretely, `GENERAL` covers general parameters, `DWH` includes the necessary information to create and connect to the Redshift cluster and S3 contains information on where to find the source dataset for this project. *This file is already filled with example values*.
   2. To create the Redshift cluster, either run the `create_dwh.py` python script or follow along the notebook `notebooks/main.ipynb`.
 
 ## Usage
 
 Project structure:
 
-- `data`: where both datasets are stored.
-- `notebooks`: contains Jupyter notebooks for testing purposes.
-- `src`: contains the source files and scripts to build and populate the database.
+- `notebooks`: contains the main Jupyter notebook to run the project (`notebooks/main.ipynb`).
+- `src`: contains the source files and scripts to build and populate the Data Warehouse.
 
-To create the database and tables, run:
+To create the Amazon Redshift cluster and populate it, either follow along the Jupyter notebook `notebooks/main.ipynb`, or run the following scripts:
 
 ```bash
+python src/create_dwh.py
 python src/create_tables.py
-```
-
-This can also be done from within a python instance:
-
-```python
-from create_tables import main as run_create_tables
-run_create_tables()
-```
-
-To load the data and populate the database, run:
-
-```bash
 python src/etl.py
 ```
 
 This can also be done from within a python instance:
 
 ```python
+from create_dwh import main as run_create_dwh
+from create_tables import main as run_create_tables
 from etl import main as run_etl
+
+run_create_dwh()
+run_create_tables()
 run_etl()
 ```
 
@@ -216,34 +210,29 @@ Helper functions to generate standard SQL queries as well as the database schema
 To query the database, first start a connection:
 
 ```python
-import psycopg2
+from utils import get_db_connection
 
-conn = psycopg2.connect(
-    "host=127.0.0.1 dbname=sparkifydb user=student password=student"
-)
-cur = conn.cursor()
+conn, cur = get_db_connection(dwh_config)
 ```
 
 **How many records are in each table?**
 
 ```python
-from sql_queries import TABLES
+from sql_queries import STAR_TABLES
 
-for table_name in TABLES.keys():
-    cur.execute(
-        f"SELECT count(*) FROM {table_name}"
-    )
+for table_name in STAR_TABLES.keys():
+    cur.execute(f"SELECT count(*) FROM {table_name}")
     print(f"{table_name} has {cur.fetchone()[0]} records.")
 ```
 
 *Output:*
 
-```
-users has 96 records.
-artists has 69 records.
-songs has 71 records.
-time has 6813 records.
-songplays has 532 records.
+```bash
+dim_users has 105 records.
+dim_artists has 10025 records.
+dim_songs has 14896 records.
+dim_time has 8023 records.
+fact_songplays has 1144 records.
 ```
 
 **Who are the top 5 users with the highest activity?**
@@ -252,18 +241,22 @@ songplays has 532 records.
 cur.execute(
     """
     SELECT
-        sub.user_id, users.first_name, users.last_name, sub.counted
+        sub.user_id, du.first_name, du.last_name, sub.counted
     FROM
         (
             SELECT
-                songplays.user_id, count(*) AS counted
+                fs.user_id, count(*) AS counted
             FROM
-                (songplays JOIN users ON songplays.user_id = users.user_id)
+                fact_songplays fs
+            JOIN
+                dim_users du
+            ON
+                fs.user_id = du.user_id
             GROUP BY
-                songplays.user_id
+                fs.user_id
         ) sub
     JOIN
-        users ON sub.user_id = users.user_id
+        dim_users du ON sub.user_id = du.user_id
     ORDER BY
         sub.counted DESC, user_id
     LIMIT 5
@@ -276,20 +269,28 @@ pd.DataFrame(cur.fetchall(), columns=("user_id", "first_name", "second_name", "c
 
 ```bash
         user_id   first_name    second_name    count
-
-0           29    Jacqueline    Lynch           104
-1           97    Kate          Harrell         68
-2           95    Sara          Johnson         67
-3           49    Chloe         Cuevas          66
-4           44    Aleena        Kirby           62
+0	    80	     Tegan	    Levine	147
+1	    49	    Chloe	    Cuevas	118
+2	    97	    Kate	    Harrell	84
+3	    24	    Layla	    Griffin	77
+4	    15	    Lily	    Koch	59
 ```
 
 When done interacting with the database, close the connection:
 
 ```python
-
 conn.close()
 ```
+
+When done interacting with the Redshift cluster, delete it to avoid unnecessary charges:
+
+```python
+from utils import delete_cluster, delete_iam_roles
+
+delete_cluster(redshift_client, dwh_config)
+delete_iam_roles(iam_client, dwh_config)
+```
+
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
