@@ -1,0 +1,21 @@
+name: sparkify_redshift
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - pandas
+  - jupyterlab
+  - ipython-sql
+  - black
+  - isort
+  - autoflake
+  - tqdm
+  - rich
+  - ipywidgets
+  - boto3
+  - psycopg2
+  - black-jupyter
+  - ca-certificates
+  - certifi
+  - openssl
