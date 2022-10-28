@@ -12,7 +12,7 @@ from sql_queries import (
     get_create_table_query,
     get_drop_table_query,
 )
-from utils import process_config
+from utils import get_db_connection, process_config
 
 
 def drop_tables(cur: Any, conn: Any):
@@ -39,14 +39,7 @@ def main():
     dwh_config = process_config(Path(__file__).parents[1].joinpath("dwh.cfg"))
 
     # 1. Get connection and cursor
-    conn = psycopg2.connect(
-        f"host={dwh_config.get('DWH', 'DWH_ENDPOINT')} "
-        f"dbname={dwh_config.get('DWH', 'DWH_DB')} "
-        f"user={dwh_config.get('DWH', 'DWH_DB_USER')} "
-        f"password={dwh_config.get('DWH', 'DWH_DB_PASSWORD')} "
-        f"port={dwh_config.get('DWH', 'DWH_DB_PORT')} "
-    )
-    cur = conn.cursor()
+    conn, cur = get_db_connection(dwh_config)
 
     # 2. Drop and create tables
     try:
