@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 import boto3
 
-from utils import process_config
+from utils import open_db_port, process_config
 
 
 def create_attach_role(iam_client: Any, dwh_config: ConfigParser) -> str:
@@ -129,6 +129,9 @@ def main():
 
     with Path(__file__).parents[1].joinpath("dwh.cfg").open("w") as fp:
         dwh_config.write(fp)
+
+    # 5. Open TCP port
+    open_db_port(user_config, dwh_config)
 
     return cluster_props, redshift_client, iam_client
 
