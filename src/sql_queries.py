@@ -18,7 +18,7 @@ STAGING_TABLES: OrderedDict[str, Iterable[str]] = OrderedDict(
         "sessionId INT",
         "song TEXT",
         "status INT",
-        "ts INT",
+        "ts BIGINT",
         "userAgent TEXT",
         "userId INT",
     ),
@@ -67,7 +67,7 @@ STAR_TABLES: OrderedDict[str, Iterable[str]] = OrderedDict(
         "weekday INT",
     ),
     fact_songplays=(
-        "songplay_id INT PRIMARY KEY",
+        "songplay_id INT IDENTITY(0, 1) PRIMARY KEY",
         "start_time TIMESTAMP NOT NULL",
         "user_id INT NOT NULL",
         "level TEXT",
@@ -109,44 +109,52 @@ STAR_TABLES_INSERTS: Dict[str, str] = OrderedDict(
     dim_time="""
             INSERT INTO
                 dim_time (start_time, hour, day, week, month, year, weekday)
-            SELECT
-                to_timestamp(e.ts/1000) AS start_time,
-                EXTRACT (HOUR FROM TIMESTAMP to_timestamp(e.ts/1000)) AS hour,
-                EXTRACT (DAY FROM TIMESTAMP to_timestamp(e.ts/1000)) AS day,
-                EXTRACT (WEEK FROM TIMESTAMP to_timestamp(e.ts/1000)) AS week,
-                EXTRACT (MONTH FROM TIMESTAMP to_timestamp(e.ts/1000)) AS month,
-                EXTRACT (YEAR FROM TIMESTAMP to_timestamp(e.ts/1000)) AS year,
-                EXTRACT (DOW FROM TIMESTAMP to_timestamp(e.ts/1000)) AS weekday,
+            SELECT DISTINCT
+                TIMESTAMP 'epoch' + ts/1000 * interval '1 second' AS start_time,
+                EXTRACT (HOUR FROM TIMESTAMP 'epoch' + ts/1000 * interval '1 second') AS hour,
+                EXTRACT (DAY FROM TIMESTAMP 'epoch' + ts/1000 * interval '1 second') AS day,
+                EXTRACT (WEEK FROM TIMESTAMP 'epoch' + ts/1000 * interval '1 second') AS week,
+                EXTRACT (MONTH FROM TIMESTAMP 'epoch' + ts/1000 * interval '1 second') AS month,
+                EXTRACT (YEAR FROM TIMESTAMP 'epoch' + ts/1000 * interval '1 second') AS year,
+                EXTRACT (DOW FROM TIMESTAMP 'epoch' + ts/1000 * interval '1 second') AS weekday
             FROM
-                events e
+                staging_events
+            WHERE
+                start_time IS NOT NULL
         """,
     dim_artists="""
             INSERT INTO
                 dim_artists (artist_id, name, location, latitude, longitude)
-            SELECT
+            SELECT DISTINCT
                 artist_id,
                 artist_name,
                 artist_location,
                 artist_latitude,
                 artist_longitude
             FROM
-                songs
+                staging_songs
+            WHERE
+                artist_id IS NOT NULL
         """,
     dim_songs="""
             INSERT INTO
                 dim_songs (song_id, title, artist_id, year, duration)
-            SELECT
+            SELECT DISTINCT
                 song_id, title, artist_id, year, duration
             FROM
-                songs
+                staging_songs
+            WHERE
+                song_id IS NOT NULL
         """,
     dim_users="""
             INSERT INTO
                 dim_users (user_id, first_name, last_name, gender, level)
-            SELECT
+            SELECT DISTINCT
                 userId, firstName, lastName, gender, level
             FROM
-                events
+                staging_events
+            WHERE
+                userId IS NOT NULL
         """,
     fact_songplays="""
             INSERT INTO
@@ -159,8 +167,8 @@ STAR_TABLES_INSERTS: Dict[str, str] = OrderedDict(
                 session_id,
                 location,
                 user_agent)
-            SELECT
-                to_timestamp(e.ts/1000) AS start_time,
+            SELECT DISTINCT
+                TIMESTAMP 'epoch' + e.ts/1000 * interval '1 second' AS start_time,
                 e.userId,
                 e.level,
                 s.song_id,
@@ -169,8 +177,12 @@ STAR_TABLES_INSERTS: Dict[str, str] = OrderedDict(
                 e.location,
                 e.userAgent
             FROM
-                events e
-            JOIN songs s ON e.song = s.title
+                staging_events e
+            JOIN
+                staging_songs s ON e.song = s.title
+            WHERE
+                e.ts IS NOT NULL AND e.userId IS NOT NULL
+                AND s.song_id IS NOT NULL AND e.artist_id IS NOT NULL
         """,
 )
 
@@ -181,7 +193,7 @@ def get_drop_table_query(table_name: str) -> str:
     Args:
         table_name: table name.
     """
-    return f"DROP TABLE IF EXISTS {table_name}"
+    return f"DROP TABLE IF EXISTS {table_name} CASCADE"
 
 
 def get_create_table_query(table_name: str, table_args: Iterable[str]) -> str:
@@ -198,7 +210,7 @@ def get_create_table_query(table_name: str, table_args: Iterable[str]) -> str:
 def get_copy_s3_query(table_name: str, s3_name: str, role_arn: str, region: str):
     return (
         f"COPY {table_name} FROM '{s3_name}' CREDENTIALS 'aws_iam_role={role_arn}' "
-        f"REGION '{region}'"
+        f"REGION '{region}' FORMAT JSON"
     )
 
 
