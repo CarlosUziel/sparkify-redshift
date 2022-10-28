@@ -183,6 +183,8 @@ Project structure:
 - `notebooks`: contains the main Jupyter notebook to run the project (`notebooks/main.ipynb`).
 - `src`: contains the source files and scripts to build and populate the Data Warehouse.
 
+Ensure you have set the `PYTHONPATH` environment variable as needed (e.g., `PYTHONPATH=~/sparkify_redshift/src`)
+
 To create the Amazon Redshift cluster and populate it, either follow along the Jupyter notebook `notebooks/main.ipynb`, or run the following scripts:
 
 ```bash
