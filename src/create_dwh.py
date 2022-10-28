@@ -130,7 +130,7 @@ def main():
     with Path(__file__).parents[1].joinpath("dwh.cfg").open("w") as fp:
         dwh_config.write(fp)
 
-    return cluster_props, redshift_client
+    return cluster_props, redshift_client, iam_client
 
 
 if __name__ == "__main":
