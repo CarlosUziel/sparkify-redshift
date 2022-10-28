@@ -75,6 +75,7 @@ def delete_iam_roles(iam_client: Any, dwh_config: ConfigParser):
 
 
 def get_db_connection(dwh_config: ConfigParser):
+    """Get database connection and cursor objects"""
     conn = psycopg2.connect(
         f"host={dwh_config.get('DWH', 'DWH_ENDPOINT')} "
         f"dbname={dwh_config.get('DWH', 'DWH_DB')} "

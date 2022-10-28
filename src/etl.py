@@ -35,6 +35,7 @@ def load_staging_tables(cur: Any, conn: Any, dwh_config: ConfigParser):
 
 
 def insert_tables(cur: Any, conn: Any):
+    """Insert data from staging tables to star schema tables"""
     for table_name, query in (pbar := tqdm(STAR_TABLES_INSERTS.items())):
         pbar.set_description(f"Inserting data into {table_name}...")
         cur.execute(query)
