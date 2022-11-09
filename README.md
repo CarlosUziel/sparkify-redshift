@@ -27,7 +27,7 @@
   </ol>
 </details>
 
-# Sparkify (using PostgreSQL)
+# Sparkify (using AWS Redshift)
 
 A project from the [Data Engineer Nanodegree Program at Udacity](https://www.udacity.com/course/data-engineer-nanodegree--nd027) to practice data warehouses on the cloud using AWS services.
 
