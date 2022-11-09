@@ -16,7 +16,7 @@
       <a href="#getting-started">Getting Started</a>
       <ul>
         <li><a href="#setting-up-a-conda-environment">Setting up a conda environment</a></li>
-        <li><a href="#initializing-postgresql-database">Initializing PostgreSQL database</a></li>
+        <li><a href="#setting-up-an-amazon-redshift-cluster">Setting up an Amazon Redshift cluster</a></li>
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
