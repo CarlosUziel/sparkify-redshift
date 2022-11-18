@@ -3,7 +3,7 @@ from typing import Dict, Iterable, Optional
 
 STAGING_TABLES: OrderedDict[str, Iterable[str]] = OrderedDict(
     staging_events=(
-        "artist_id TEXT",
+        "artist_name TEXT",
         "auth TEXT",
         "firstName TEXT",
         "gender TEXT",
@@ -172,14 +172,16 @@ STAR_TABLES_INSERTS: Dict[str, str] = OrderedDict(
                 e.userId,
                 e.level,
                 s.song_id,
-                e.artist_id,
+                s.artist_id,
                 e.sessionId,
                 e.location,
                 e.userAgent
             FROM
                 staging_events e
             JOIN
-                staging_songs s ON e.song = s.title
+                staging_songs s
+            ON
+                e.song = s.title AND e.artist_name = s.name AND e.length = s.duration
             WHERE
                 e.ts IS NOT NULL AND e.userId IS NOT NULL
                 AND s.song_id IS NOT NULL AND e.artist_id IS NOT NULL
